@@ -369,3 +369,77 @@ body > main {
     min-height: 44px;
   }
 }
+
+/* Guided kit workflow prototype */
+#campus-stores .workflow-intro,
+#campus-stores .workflow-note,
+#campus-stores .workflow-complete {
+  margin: 12px 0;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--desk);
+}
+#campus-stores .workflow-intro p,
+#campus-stores .workflow-note p,
+#campus-stores .workflow-complete p {
+  margin-top: 5px;
+  color: var(--quiet);
+}
+#campus-stores .workflow-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin: 13px 0;
+}
+#campus-stores .workflow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+#campus-stores .workflow-step > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: var(--sel);
+  color: var(--inv);
+  font-weight: 700;
+}
+#campus-stores .workflow-step small,
+#campus-stores .kit-item small {
+  display: block;
+  margin-top: 3px;
+  color: var(--quiet);
+}
+#campus-stores .kit-list {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+}
+#campus-stores .kit-item,
+#campus-stores .workflow-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+#campus-stores .workflow-action p,
+#campus-stores .workflow-hint {
+  margin-top: 4px;
+  color: var(--quiet);
+  font-size: 13px;
+}
+#campus-stores .workflow-note {
+  border-left: 3px solid var(--mark);
+}
+@container (max-width:650px) {
+  #campus-stores .workflow-steps { grid-template-columns: 1fr; }
+  #campus-stores .workflow-action,
+  #campus-stores .kit-item { align-items: flex-start; flex-direction: column; }
+}

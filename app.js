@@ -88,6 +88,7 @@
     ["Inventory", "package"],
     ["Loan register", "book-open"],
     ["Desk book", "messages-square"],
+    ["Kit workflow", "package-open"],
   ];
   const original = () => ({
     version: 1,
@@ -333,11 +334,50 @@
       '<form data-note><div class="form"><label class="full"><span>Note for the next shift</span><textarea name="note" rows="2" maxlength="400" required></textarea></label></div><button type="submit">Add handover note</button></form>'
     );
   }
+  function kitWorkflow() {
+    const reqId = "RQ-214";
+    const kitAssets = ["PR-04", "SP-02", "AD-12"];
+    const kitLoans = kitAssets.map((id) => s.loans.find((l) => l.req === reqId && l.asset === id));
+    const issued = kitLoans.every(Boolean);
+    const returned = kitLoans.map((l) => Boolean(l && l.back));
+    const labels = [
+      ["PR-04", "HDMI projector", "BenQ MH550", "Fri 8 pm"],
+      ["SP-02", "Portable speaker", "JBL Eon One", "Fri 8 pm"],
+      ["AD-12", "USB-C → HDMI adapter", "Belkin AVC002", "Sat 9 am"],
+    ];
+    let html = head(
+      "Film Society kit",
+      "A guided checkout and split-return prototype · RQ-214",
+    );
+    html += '<div class="workflow-intro"><strong>One request, three physical units</strong><p>Keep the kit together at pickup, but track each unit separately when it comes back. This makes the outstanding adapter visible to the next shift.</p></div>';
+    html += '<div class="workflow-steps"><div class="workflow-step"><span>1</span><div><b>Friday · 3:45 pm</b><small>Issue the complete screening kit to Kabir Sen.</small></div></div><div class="workflow-step"><span>2</span><div><b>Friday · 7:30 pm</b><small>Record the projector and speaker as returned. Keep the adapter open.</small></div></div><div class="workflow-step"><span>3</span><div><b>Saturday · 9:00 am</b><small>Receive Leela’s adapter and close the final unit.</small></div></div></div>';
+    html += '<div class="kit-list">';
+    labels.forEach(([id, type, model, due], i) => {
+      const loan = kitLoans[i];
+      const status = !loan ? "Not issued" : loan.back ? "Returned" : "Outstanding";
+      html += '<div class="kit-item"><div><strong>' + esc(type) + '</strong><small>' + esc(id + " · " + model + " · Due " + due) + '</small></div><span class="tag ' + (status === "Returned" ? "good" : "") + '">' + status + '</span></div>';
+    });
+    html += '</div>';
+    if (!issued) {
+      html += '<div class="workflow-action"><div><b>Issue the screening kit</b><p>Creates three linked issue slips for Kabir, with the adapter due at the promised Saturday handover.</p></div>' + btn("Issue all 3 units", "kit-issue", "", "primary") + '</div>';
+    } else if (!returned[0] || !returned[1]) {
+      if (s.phase >= 1) html += '<div class="workflow-action"><div><b>Friday partial return</b><p>Record the projector and speaker now. The adapter remains on loan to the Film Society until Leela brings it in.</p></div>' + btn("Return projector + speaker", "kit-partial", "", "primary") + '</div>';
+      else html += '<p class="workflow-hint">Advance to Friday evening to record the partial return.</p>';
+    } else if (!returned[2]) {
+      if (s.phase >= 2) html += '<div class="workflow-action"><div><b>Saturday morning handover</b><p>Leela has arrived with the adapter. Close only this remaining unit.</p></div>' + btn("Return outstanding adapter", "kit-final", "", "primary") + '</div>';
+      else html += '<p class="workflow-hint">Advance to Saturday morning when Leela arrives with the adapter.</p>';
+    } else {
+      html += '<div class="workflow-complete"><strong>Screening kit fully returned</strong><p>All three physical units are back in stock. The next shift can see a complete, auditable record.</p></div>';
+    }
+    html += '<div class="workflow-note"><strong>What this prototype changes</strong><p>Instead of making the desk worker reconstruct a multi-item story from separate screens, it presents the request as one guided job while preserving one loan slip per physical unit. Partial returns remain explicit.</p></div>';
+    return html;
+  }
   const screens = {
     Requests: requestPage,
     Inventory: inventory,
     "Loan register": register,
     "Desk book": deskbook,
+    "Kit workflow": kitWorkflow,
   };
   function paint() {
     const phase = shifts[s.phase];
@@ -406,6 +446,40 @@
       case "scope":
         s.onlyOpen = v === "0";
         break;
+      case "kit-issue": {
+        const kit = [
+          ["PR-04", "Fri 8 pm"],
+          ["SP-02", "Fri 8 pm"],
+          ["AD-12", "Sat 9 am"],
+        ];
+        if (kit.some(([asset]) => out(asset) || s.loans.some((l) => l.req === "RQ-214" && l.asset === asset))) {
+          s.notice = "The screening kit has already been issued or a unit is unavailable.";
+          break;
+        }
+        let nextNum = Math.max(...s.loans.map((l) => l.num)) + 1;
+        kit.forEach(([asset, due]) => {
+          s.loans.push({ num: nextNum++, req: "RQ-214", asset, who: "Kabir Sen", due, back: false });
+        });
+        s.notice = "Film Society kit issued to Kabir Sen: 3 separate unit slips created.";
+        break;
+      }
+      case "kit-partial": {
+        const ids = ["PR-04", "SP-02"];
+        ids.forEach((id) => {
+          const loan = s.loans.find((l) => l.req === "RQ-214" && l.asset === id && !l.back);
+          if (loan) loan.back = true;
+        });
+        s.notice = "Projector and speaker returned. The adapter remains outstanding for Saturday's handover.";
+        break;
+      }
+      case "kit-final": {
+        const loan = s.loans.find((l) => l.req === "RQ-214" && l.asset === "AD-12" && !l.back);
+        if (loan) {
+          loan.back = true;
+          s.notice = "Adapter AD-12 returned by Leela Das. Film Society kit is complete.";
+        }
+        break;
+      }
       case "return": {
         const l = s.loans.find((l) => l.num === Number(v));
         if (!l || l.back) return;
